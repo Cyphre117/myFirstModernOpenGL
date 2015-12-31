@@ -22,16 +22,33 @@ int main(int argc, char* argv[])
     glewExperimental = GL_TRUE;
     glewInit();
 
-    float verts[] = {
-        0.0f,  0.5f,
-       -0.5f, -0.5f,
-        0.5f, -0.5f
-    };
-
+    // Create vertex buffer object
     GLuint vbo;
     glGenBuffers(1, &vbo);
+    std::cout << "Vertex array buffer: " << vbo << std::endl;
+
+    GLfloat verts[] = {
+       -0.5f,  0.5f, 1.0f, 0.0f, 0.0f,
+        0.5f,  0.5f, 0.0f, 1.0f, 0.0f,
+       -0.5f, -0.5f, 0.0f, 0.0f, 1.0f,
+        0.5f, -0.5f, 1.0f, 1.0f, 1.0f
+    };
+
     glBindBuffer(GL_ARRAY_BUFFER, vbo);
     glBufferData(GL_ARRAY_BUFFER, sizeof(verts), verts, GL_STATIC_DRAW);
+
+    // Create element array
+    GLuint ebo;
+    glGenBuffers( 1, &ebo );
+    std::cout << "Element array buffer: " << ebo << std::endl;
+
+    GLushort elements[] = {
+        0, 1, 2,
+        2, 3, 0
+    };
+
+    glBindBuffer( GL_ELEMENT_ARRAY_BUFFER, ebo );
+    glBufferData( GL_ELEMENT_ARRAY_BUFFER, sizeof(elements), elements, GL_STATIC_DRAW );
 
     GLuint vertexShader = glCreateShader(GL_VERTEX_SHADER);
     {
@@ -91,23 +108,30 @@ int main(int argc, char* argv[])
         else std::cout << "Compiled fragment Shader" << std::endl;
     }
     
-    // Create the combined shader
+    // Create the shader program, attach the vertex and fragment shaders
     GLuint shaderProgram = glCreateProgram();
     glAttachShader( shaderProgram, vertexShader );
     glAttachShader( shaderProgram, fragmentShader );
-        
     glBindFragDataLocation( shaderProgram, 0, "outColour" );
-
     glLinkProgram( shaderProgram );
     glUseProgram( shaderProgram );
     
-    // Set the vertex attributes
+    // Set the vertex attributes, to align with the vertex array
     GLuint vao;
     glGenVertexArrays(1, &vao);
     glBindVertexArray(vao);
+
     GLint positionAttrib = glGetAttribLocation( shaderProgram, "position" );
-    glVertexAttribPointer( positionAttrib, 2, GL_FLOAT, GL_FALSE, 0, 0 );
     glEnableVertexAttribArray( positionAttrib );
+    glVertexAttribPointer( positionAttrib, 2, GL_FLOAT, GL_FALSE, 5*sizeof(GLfloat), 0 );
+
+    GLint colourAttrib = glGetAttribLocation( shaderProgram, "vColour" );
+    glEnableVertexAttribArray( colourAttrib );
+    glVertexAttribPointer( colourAttrib, 3, GL_FLOAT, GL_FALSE, 5*sizeof(GLfloat), (void*)(2*sizeof(GLfloat)) );
+
+    // Set uniforms
+    GLint brightness = glGetUniformLocation( shaderProgram, "brightness" );
+    glUniform1f( brightness, 1.0f );
 
     SDL_Event event;
     bool quit = false;
@@ -120,15 +144,26 @@ int main(int argc, char* argv[])
                 if( event.key.keysym.scancode == SDL_SCANCODE_ESCAPE ) quit = true;
             }
         }
+        // Clear the window
+        glClearColor( 0.2f, 0.1f, 0.2f, 1.0f );
         glClear( GL_COLOR_BUFFER_BIT );
         
-        glDrawArrays( GL_TRIANGLES, 0, 3 );
+        glDrawArrays( GL_TRIANGLES, 1, 3 );
+        //glDrawElements( GL_TRIANGLES, 3, GL_UNSIGNED_SHORT, 0 );
         
         // Show the graphics
         SDL_GL_SwapWindow( window );
     }
     
     // Cleanup
+    glDeleteProgram( shaderProgram );
+    glDeleteShader( vertexShader );
+    glDeleteShader( fragmentShader );
+
+    glDeleteBuffers( 1, &ebo );
+    glDeleteBuffers( 1, &vbo );
+    glDeleteVertexArrays( 1, &vao );
+
     SDL_GL_DeleteContext(context);
     SDL_Quit();
     return 0;
