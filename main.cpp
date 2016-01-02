@@ -6,6 +6,9 @@
 #include <GL/glew.h>
 #include <SDL2/SDL_opengl.h>
 
+const int SCREEN_WIDTH = 800;
+const int SCREEN_HEIGHT = 600;
+
 GLuint compile_frag_shader( std::string filename );
 GLuint compile_vert_shader( std::string filename );
 
@@ -23,7 +26,7 @@ int main(int argc, char* argv[])
     SDL_GL_SetAttribute(SDL_GL_CONTEXT_MINOR_VERSION, 2);
 
     // Create the window ready for OpenGL rendering
-    SDL_Window* window = SDL_CreateWindow("OpenGL", 100, 100, 800, 600, SDL_WINDOW_OPENGL);
+    SDL_Window* window = SDL_CreateWindow("OpenGL", 100, 100, SCREEN_WIDTH, SCREEN_HEIGHT, SDL_WINDOW_OPENGL);
     SDL_GLContext context = SDL_GL_CreateContext(window);
     
     // Load OpenGL functions
@@ -106,6 +109,8 @@ int main(int argc, char* argv[])
         glClearColor( 0.2f, 0.1f, 0.2f, 1.0f );
         glClear( GL_COLOR_BUFFER_BIT );
         
+        glUniform1f( brightness, sinf( SDL_GetTicks() / 1000.0f ) );
+
         //glDrawArrays( GL_TRIANGLES, 1, 3 );
         glDrawElements( GL_TRIANGLES, 6, GL_UNSIGNED_SHORT, 0 );
         
