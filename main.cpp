@@ -6,8 +6,16 @@
 #include <GL/glew.h>
 #include <SDL2/SDL_opengl.h>
 
+GLuint compile_frag_shader( std::string filename );
+GLuint compile_vert_shader( std::string filename );
+
 int main(int argc, char* argv[])
 {
+    // Dont use cmd line ards yet
+    for( int i = 0; i < argc; i++ )
+        std::cout << argv[i];
+    std::cout << std::endl;
+
     SDL_Init(SDL_INIT_EVERYTHING);
     // Specify the version of OpenGL we want
     SDL_GL_SetAttribute(SDL_GL_CONTEXT_PROFILE_MASK, SDL_GL_CONTEXT_PROFILE_CORE);
@@ -44,69 +52,16 @@ int main(int argc, char* argv[])
 
     GLushort elements[] = {
         0, 1, 2,
-        2, 3, 0
+        2, 3, 1
     };
 
     glBindBuffer( GL_ELEMENT_ARRAY_BUFFER, ebo );
     glBufferData( GL_ELEMENT_ARRAY_BUFFER, sizeof(elements), elements, GL_STATIC_DRAW );
 
-    GLuint vertexShader = glCreateShader(GL_VERTEX_SHADER);
-    {
-        // Load the vertex shader from a file
-        std::ifstream vs("vertex.glsl");
-        if( vs )
-            std::cout << "Loaded vertex shader" << std::endl;
-        else
-            std::cout << "Could not load vertex shader" << std::endl;
-        std::stringstream buffer;
-        buffer << vs.rdbuf();
-
-        // Compile the vertex shader
-        const char* c_buffer = buffer.str().c_str();
-        glShaderSource(vertexShader, 1, &c_buffer, NULL);
-        glCompileShader(vertexShader);
-        
-        // Check the shader was compiled correctly
-        GLint status;
-        glGetShaderiv(vertexShader, GL_COMPILE_STATUS, &status);
-        if( status != GL_TRUE )
-        {
-            // There was an error compiling the shader
-            char buffer[512];
-            glGetShaderInfoLog(vertexShader, 512, NULL, buffer);
-            std::cout << "VS Shader Error: " << buffer << std::endl;
-            return 1;
-        }
-        else std::cout << "Compiled vertex Shader" << std::endl;
-    }
-    GLuint fragmentShader = glCreateShader(GL_FRAGMENT_SHADER);
-    {
-        // Load the fragment shader from a file
-        std::ifstream fs("fragment.glsl");
-        if( fs )
-            std::cout << "Loaded fragment shader" << std::endl;
-        else
-            std::cout << "Could not load vertex shader" << std::endl;
-        std::stringstream buffer;
-        buffer << fs.rdbuf();
-
-        // Compile the fragment shader
-        const char* c_buffer = buffer.str().c_str();
-        glShaderSource(fragmentShader, 1, &c_buffer, NULL);
-        glCompileShader(fragmentShader);
-
-        // Check the shader was compiled succesfully
-        GLint status;
-        glGetShaderiv(fragmentShader, GL_COMPILE_STATUS, &status);
-        if( status != GL_TRUE )
-        {
-            char buffer[512];
-            glGetShaderInfoLog(fragmentShader, 512, NULL, buffer);
-            std::cout << "FS Shader Error: " << buffer << std::endl;
-            return 1;
-        }
-        else std::cout << "Compiled fragment Shader" << std::endl;
-    }
+    GLuint vertexShader = compile_vert_shader("vertex.glsl");
+    if( vertexShader == 0 ) return -1;
+    GLuint fragmentShader = compile_frag_shader("fragment.glsl");
+    if( fragmentShader == 0 ) return -1;
     
     // Create the shader program, attach the vertex and fragment shaders
     GLuint shaderProgram = glCreateProgram();
@@ -133,6 +88,9 @@ int main(int argc, char* argv[])
     GLint brightness = glGetUniformLocation( shaderProgram, "brightness" );
     glUniform1f( brightness, 1.0f );
 
+    // Ensure the element array buffer is bound
+    glBindBuffer( GL_ELEMENT_ARRAY_BUFFER, ebo );
+
     SDL_Event event;
     bool quit = false;
     while( !quit ) // START OF MAIN LOOP
@@ -148,8 +106,8 @@ int main(int argc, char* argv[])
         glClearColor( 0.2f, 0.1f, 0.2f, 1.0f );
         glClear( GL_COLOR_BUFFER_BIT );
         
-        glDrawArrays( GL_TRIANGLES, 1, 3 );
-        //glDrawElements( GL_TRIANGLES, 3, GL_UNSIGNED_SHORT, 0 );
+        //glDrawArrays( GL_TRIANGLES, 1, 3 );
+        glDrawElements( GL_TRIANGLES, 6, GL_UNSIGNED_SHORT, 0 );
         
         // Show the graphics
         SDL_GL_SwapWindow( window );
@@ -167,4 +125,69 @@ int main(int argc, char* argv[])
     SDL_GL_DeleteContext(context);
     SDL_Quit();
     return 0;
+}
+
+GLuint compile_vert_shader( std::string filename )
+{
+    GLuint vertexShader = glCreateShader( GL_VERTEX_SHADER );
+    // Load the vertex shader from a file
+    std::ifstream vs( filename );
+    if( vs )
+        std::cout << "Loaded vertex shader" << std::endl;
+    else
+        std::cout << "Could not load vertex shader" << std::endl;
+    std::stringstream buffer;
+    buffer << vs.rdbuf();
+
+    // Compile the vertex shader
+    const char* c_buffer = buffer.str().c_str();
+    glShaderSource(vertexShader, 1, &c_buffer, NULL);
+    glCompileShader(vertexShader);
+    
+    // Check the shader was compiled correctly
+    GLint status;
+    glGetShaderiv(vertexShader, GL_COMPILE_STATUS, &status);
+    if( status != GL_TRUE )
+    {
+        // There was an error compiling the shader
+        char buffer[512];
+        glGetShaderInfoLog(vertexShader, 512, NULL, buffer);
+        std::cout << "VS Shader Error: " << buffer << std::endl;
+        return 0;
+    }
+    else std::cout << "Compiled vertex Shader" << std::endl;
+
+    return vertexShader;
+}
+
+GLuint compile_frag_shader( std::string filename )
+{
+    GLuint fragmentShader = glCreateShader(GL_FRAGMENT_SHADER);
+    // Load the fragment shader from a file
+    std::ifstream fs(filename);
+    if( fs )
+        std::cout << "Loaded fragment shader" << std::endl;
+    else
+        std::cout << "Could not load vertex shader" << std::endl;
+    std::stringstream buffer;
+    buffer << fs.rdbuf();
+
+    // Compile the fragment shader
+    const char* c_buffer = buffer.str().c_str();
+    glShaderSource(fragmentShader, 1, &c_buffer, NULL);
+    glCompileShader(fragmentShader);
+
+    // Check the shader was compiled succesfully
+    GLint status;
+    glGetShaderiv(fragmentShader, GL_COMPILE_STATUS, &status);
+    if( status != GL_TRUE )
+    {
+        char buffer[512];
+        glGetShaderInfoLog(fragmentShader, 512, NULL, buffer);
+        std::cout << "FS Shader Error: " << buffer << std::endl;
+        return 0;
+    }
+    else std::cout << "Compiled fragment Shader" << std::endl;
+
+    return fragmentShader;
 }
