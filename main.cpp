@@ -39,10 +39,10 @@ int main(int argc, char* argv[])
     std::cout << "Vertex array buffer: " << vbo << std::endl;
 
     GLfloat verts[] = {
-       -0.5f,  0.5f, 1.0f, 0.0f, 0.0f,
-        0.5f,  0.5f, 0.0f, 1.0f, 0.0f,
-       -0.5f, -0.5f, 0.0f, 0.0f, 1.0f,
-        0.5f, -0.5f, 1.0f, 1.0f, 1.0f
+       -0.5f,  0.5f, 1.0f, 0.0f, 0.0f, -1.0f, -1.0f, // Top left
+        0.5f,  0.5f, 0.0f, 1.0f, 0.0f,  2.0f, -1.0f, // Top right
+       -0.5f, -0.5f, 0.0f, 0.0f, 1.0f, -1.0f,  2.0f, // bottom left
+        0.5f, -0.5f, 1.0f, 1.0f, 1.0f,  2.0f,  2.0f  // bottom right
     };
 
     glBindBuffer(GL_ARRAY_BUFFER, vbo);
@@ -60,6 +60,37 @@ int main(int argc, char* argv[])
 
     glBindBuffer( GL_ELEMENT_ARRAY_BUFFER, ebo );
     glBufferData( GL_ELEMENT_ARRAY_BUFFER, sizeof(elements), elements, GL_STATIC_DRAW );
+
+    // Create texture
+    GLuint tex;
+    glGenTextures( 1, &tex );
+
+    GLfloat pixels[] = {
+        1, 1, 1, 0, 1, 0,
+        0, 0, 1, 1, 1, 1
+    };
+
+    // Send texture data
+    glBindTexture( GL_TEXTURE_2D, tex );
+    glTexImage2D( GL_TEXTURE_2D, 0, GL_RGB, 2, 2, 0, GL_RGB, GL_FLOAT, pixels );
+
+    // Load the textue from a file
+    {
+        SDL_Surface* file = SDL_LoadBMP( "sample.bmp" );
+        if( !file ) {
+            std::cout << "failed to load image" << std::endl;
+            return -1;
+        } else {
+            glTexImage2D( GL_TEXTURE_2D, 0, GL_RGB, file->w, file->h, 0, GL_RGB, GL_UNSIGNED_BYTE, file->pixels );
+        }
+    }
+
+    // Set Texture Params
+    glTexParameteri( GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_MIRRORED_REPEAT );
+    glTexParameteri( GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE );
+    glTexParameteri( GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST );
+    glTexParameteri( GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST );
+
 
     GLuint vertexShader = compile_vert_shader("vertex.glsl");
     if( vertexShader == 0 ) return -1;
@@ -81,11 +112,15 @@ int main(int argc, char* argv[])
 
     GLint positionAttrib = glGetAttribLocation( shaderProgram, "position" );
     glEnableVertexAttribArray( positionAttrib );
-    glVertexAttribPointer( positionAttrib, 2, GL_FLOAT, GL_FALSE, 5*sizeof(GLfloat), 0 );
+    glVertexAttribPointer( positionAttrib, 2, GL_FLOAT, GL_FALSE, 7*sizeof(GLfloat), 0 );
 
     GLint colourAttrib = glGetAttribLocation( shaderProgram, "vColour" );
     glEnableVertexAttribArray( colourAttrib );
-    glVertexAttribPointer( colourAttrib, 3, GL_FLOAT, GL_FALSE, 5*sizeof(GLfloat), (void*)(2*sizeof(GLfloat)) );
+    glVertexAttribPointer( colourAttrib, 3, GL_FLOAT, GL_FALSE, 7*sizeof(GLfloat), (void*)(2*sizeof(GLfloat)) );
+
+    GLint texCoordAttrib = glGetAttribLocation( shaderProgram, "vTexCoord" );
+    glEnableVertexAttribArray( texCoordAttrib );
+    glVertexAttribPointer( texCoordAttrib, 2, GL_FLOAT, GL_FALSE, 7*sizeof(GLfloat), (void*)(5*sizeof(GLfloat)) );
 
     // Set uniforms
     GLint brightness = glGetUniformLocation( shaderProgram, "brightness" );
@@ -109,7 +144,7 @@ int main(int argc, char* argv[])
         glClearColor( 0.2f, 0.1f, 0.2f, 1.0f );
         glClear( GL_COLOR_BUFFER_BIT );
         
-        glUniform1f( brightness, sinf( SDL_GetTicks() / 1000.0f ) );
+        glUniform1f( brightness, sinf( SDL_GetTicks() / 1000.0f ) * 0.5f + 0.5f );
 
         //glDrawArrays( GL_TRIANGLES, 1, 3 );
         glDrawElements( GL_TRIANGLES, 6, GL_UNSIGNED_SHORT, 0 );
